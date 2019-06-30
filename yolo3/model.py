@@ -112,9 +112,9 @@ def distance(x, num_anchor, num_filters, class_center, num_classes):
 
 def make_last_layers(x, num_filters, out_filters, layer, num_classes, num_anchor=3):
     '''6 Conv2D_BN_Leaky layers followed by a Conv2D_linear layer'''
-    center_dims = num_filters * 2
-    class_center = tf.Variable(tf.random.normal([(num_classes + 1), center_dims]), False, name="class_center_"+str(layer))
-    class_center = tf.reshape(class_center, [1, 1, 1, (num_classes + 1), center_dims])
+    # center_dims = num_filters * 2
+    # class_center = tf.Variable(tf.random.normal([(num_classes + 1), center_dims]), False, name="class_center_"+str(layer))
+    # class_center = tf.reshape(class_center, [1, 1, 1, (num_classes + 1), center_dims])
 
     x = compose(
         DarknetConv2D_BN_Leaky(num_filters, (1, 1)),
@@ -125,11 +125,11 @@ def make_last_layers(x, num_filters, out_filters, layer, num_classes, num_anchor
     gap = DarknetConv2D_BN_Leaky(num_filters * 2, (3, 3))(x)
     y = DarknetConv2D(out_filters, (1, 1))(gap)
 
-    cluster_branch = DarknetConv2D_BN_Leaky(center_dims * num_anchor, (1, 1))(x)
-    _distance = lambda x: distance(x, num_anchor=num_anchor
-    , num_filters=center_dims, class_center=class_center, num_classes=num_classes)
-    z = Lambda(_distance, name="yolo_last_" + str(num_filters))(cluster_branch)
-    y = Concatenate()([y, z])
+    # cluster_branch = DarknetConv2D_BN_Leaky(center_dims * num_anchor, (1, 1))(x)
+    # _distance = lambda x: distance(x, num_anchor=num_anchor
+    # , num_filters=center_dims, class_center=class_center, num_classes=num_classes)
+    # z = Lambda(_distance, name="yolo_last_" + str(num_filters))(cluster_branch)
+    # y = Concatenate()([y, z])
     return x, y, gap
 
 
@@ -212,7 +212,7 @@ def yolo_head(feats, anchors, num_classes, input_shape, calc_loss=False):
     grid = K.cast(grid, K.dtype(feats))
 
     feats = K.reshape(
-        feats, [-1, grid_shape[0], grid_shape[1], num_anchors, num_classes + 5 + (num_classes + 1)])
+        feats, [-1, grid_shape[0], grid_shape[1], num_anchors, num_classes + 5])
 
     # Adjust preditions to each spatial grid point and anchor size.
     box_xy = (K.sigmoid(feats[..., :2]) + grid) / K.cast(grid_shape[::-1], K.dtype(feats))
@@ -490,7 +490,7 @@ def yolo_loss(args, anchors, num_classes,  ignore_thresh=.5, print_loss=True, su
 def _yolo_loss(args, anchors, num_classes,  ignore_thresh=.5, print_loss=False, summary_loss=True):
     num_layers = len(anchors) // 3  # default setting
     yolo_outputs = args[:num_layers]
-    gaps = args[num_layers:num_layers * 2]
+    # gaps = args[num_layers:num_layers * 2]
 
     y_true = args[num_layers * 2:]
     anchor_mask = [[6, 7, 8], [3, 4, 5], [0, 1, 2]] if num_layers == 3 else [[3, 4, 5], [1, 2, 3]]
@@ -542,10 +542,10 @@ def _yolo_loss(args, anchors, num_classes,  ignore_thresh=.5, print_loss=False, 
         # extend_true_class_probs = tf.concat(
         #     [true_class_probs, 1 - tf.reduce_sum(true_class_probs, axis=4, keepdims=True)], axis=4)
 
-        num_pos = tf.reduce_sum(true_class_probs)
-        pos = tf.reduce_sum(true_class_probs, axis=4, )
-        all = tf.cast(tf.reduce_prod(tf.shape(true_class_probs)), K.dtype(pos))
-        weight = 1 - (1 - num_pos / all) * pos
+        # num_pos = tf.reduce_sum(true_class_probs)
+        # pos = tf.reduce_sum(true_class_probs, axis=4, )
+        # all = tf.cast(tf.reduce_prod(tf.shape(true_class_probs)), K.dtype(pos))
+        # weight = 1 - (1 - num_pos / all) * pos
         # multi_class_loss = weight * tf.nn.softmax_cross_entropy_with_logits(
         #     labels=extend_true_class_probs
         #     , logits=raw_pred[..., 7:]

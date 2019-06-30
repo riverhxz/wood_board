@@ -26,7 +26,7 @@ def _main():
     classes_path = 'model_data/wood_board.txt'
     anchors_path = 'model_data/wood_anchors.txt'
     weight_path = 'model_data/darknet53.weights.h5'
-    val_split = 0.5
+    val_split = 0.1
 
     class_names = get_classes(classes_path)
     num_classes = len(class_names)
@@ -88,7 +88,7 @@ def _main():
                       loss={'yolo_loss': lambda y_true, y_pred: y_pred})  # recompile to apply the change
         print('Unfreeze all of the layers.')
 
-        batch_size = 32  # note that more GPU memory is required after unfreezing the body
+        batch_size = 2  # note that more GPU memory is required after unfreezing the body
         print('Train on {} samples, val on {} samples, with batch size {}.'.format(num_train, num_val, batch_size))
         model.fit_generator(data_generator_wrapper(lines[:num_train], batch_size, input_shape, anchors, num_classes, is_random=True),
                             steps_per_epoch=max(1, num_train // batch_size),
@@ -162,6 +162,7 @@ def data_generator(annotation_lines, batch_size, input_shape, anchors, num_class
             if i == 0:
                 np.random.shuffle(annotation_lines)
             image, box = get_random_data(annotation_lines[i], input_shape, random=is_random)
+            # print(annotation_lines[i].split()[0].split("/")[-1])
             image_data.append(image)
             box_data.append(box)
             i = (i + 1) % n
