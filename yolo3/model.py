@@ -161,7 +161,7 @@ def yolo_body(inputs, num_anchors, num_classes):
     x = Concatenate()([x, darknet.layers[92].output])
     x, y3, gap3 = make_last_layers(x, 128, num_anchors * (num_classes + 5), 3,num_classes)
 
-    return Model(inputs, [y1, y2, y3, gap1, gap2, gap3])
+    return Model(inputs, [y1, y2, y3])
 
 
 def tiny_yolo_body(inputs, num_anchors, num_classes):
