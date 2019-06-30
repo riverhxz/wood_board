@@ -3,12 +3,12 @@ Retrain the YOLO model for your own dataset.
 """
 
 import numpy as np
-import tensorflow.python.keras.backend as K
-from   tensorflow.python.keras.layers import Input, Lambda
-from   tensorflow.python.keras.models import Model
-from   tensorflow.python.keras.optimizers import Adam
-from   tensorflow.python.keras.callbacks import TensorBoard, ModelCheckpoint, ReduceLROnPlateau, EarlyStopping
-from   tensorflow.python.keras.callbacks import Callback
+from tensorflow.python.keras import backend as K
+from tensorflow.python.keras.layers import Input, Lambda
+from tensorflow.python.keras.models import Model
+from tensorflow.python.keras.optimizers import Adam
+from tensorflow.python.keras.callbacks import TensorBoard, ModelCheckpoint, ReduceLROnPlateau, EarlyStopping
+from tensorflow.python.keras.callbacks import Callback
 import tensorflow as tf
 
 from yolo3 import model
@@ -16,35 +16,7 @@ from yolo3.model import preprocess_true_boxes, yolo_body, tiny_yolo_body, yolo_l
 from yolo3.utils import get_random_data
 from datetime import datetime
 
-
 print(tf.__version__)
-# class UpdateCallBack(Callback):
-#
-#     def set_update_param(self, gap, y, center, watches={}):
-#         self.gap = gap
-#         self.y = y
-#         self.center = center
-#         self.watches = watches
-#
-#     def __init__(self):
-#         super(Callback, self).__init__()
-#         self.gap = None
-#         self.y = None
-#         self.center = None
-#
-#     def on_batch_end(self, batch, logs=None):
-#
-#
-#         print_op = tf.print("proto update is done")
-#
-#         with tf.control_dependencies([print_op]):
-#             update_ops = model.update_prototype(self.gap, self.y, self.center)
-#             for x in update_ops:
-#                 x.run()
-#
-#
-#         for k, v in self.watches.items():
-#             tf.summary.scalar(k, v)
 
 
 def _main():
@@ -65,8 +37,8 @@ def _main():
 
     is_tiny_version = len(anchors) == 6  # default setting
     model = create_model(input_shape, anchors, num_classes,
-                             freeze_body=2,
-                             weights_path= weight_path)  # make sure you know what you freeze
+                         freeze_body=2,
+                         weights_path=weight_path)  # make sure you know what you freeze
 
     logdir = "logs/variables/" + datetime.now().strftime("%Y%m%d-%H%M%S")
     # from tensorflow.python.summary import create_file_writer
@@ -171,11 +143,12 @@ def create_model(input_shape, anchors, num_classes, load_pretrained=True, freeze
 
     model_loss = Lambda(yolo_loss, output_shape=(1,), name='yolo_loss',
                         arguments={'anchors': anchors, 'num_classes': num_classes, 'ignore_thresh': 0.5,
-                                })(
+                                   })(
         [*model_body.output, *y_true])
     model = Model([model_body.input, *y_true], model_loss)
 
     return model
+
 
 def data_generator(annotation_lines, batch_size, input_shape, anchors, num_classes):
     '''data generator for fit_generator'''
