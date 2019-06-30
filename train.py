@@ -10,7 +10,7 @@ from tensorflow.python.keras.optimizers import Adam
 from tensorflow.python.keras.callbacks import TensorBoard, ModelCheckpoint, ReduceLROnPlateau, EarlyStopping
 from tensorflow.python.keras.callbacks import Callback
 import tensorflow as tf
-
+import os
 from yolo3 import model
 from yolo3.model import preprocess_true_boxes, yolo_body, tiny_yolo_body, yolo_loss
 from yolo3.utils import get_random_data
@@ -20,6 +20,7 @@ print(tf.__version__)
 
 
 def _main():
+    os.environ["CUDA_VISIBLE_DEVICES"] = '3'
     annotation_path = 'data/holes.csv'
     log_dir = 'logs/holes/'
     classes_path = 'model_data/wood_board.txt'
@@ -87,12 +88,12 @@ def _main():
                       loss={'yolo_loss': lambda y_true, y_pred: y_pred})  # recompile to apply the change
         print('Unfreeze all of the layers.')
 
-        batch_size = 2  # note that more GPU memory is required after unfreezing the body
+        batch_size = 32  # note that more GPU memory is required after unfreezing the body
         print('Train on {} samples, val on {} samples, with batch size {}.'.format(num_train, num_val, batch_size))
-        model.fit_generator(data_generator_wrapper(lines[:num_train], batch_size, input_shape, anchors, num_classes),
+        model.fit_generator(data_generator_wrapper(lines[:num_train], batch_size, input_shape, anchors, num_classes, is_random=True),
                             steps_per_epoch=max(1, num_train // batch_size),
                             validation_data=data_generator_wrapper(lines[num_train:], batch_size, input_shape, anchors,
-                                                                   num_classes),
+                                                                   num_classes, is_random=False),
                             validation_steps=max(1, num_val // batch_size),
                             epochs=100,
                             initial_epoch=50,
@@ -150,7 +151,7 @@ def create_model(input_shape, anchors, num_classes, load_pretrained=True, freeze
     return model
 
 
-def data_generator(annotation_lines, batch_size, input_shape, anchors, num_classes):
+def data_generator(annotation_lines, batch_size, input_shape, anchors, num_classes, is_random):
     '''data generator for fit_generator'''
     n = len(annotation_lines)
     i = 0
@@ -160,7 +161,7 @@ def data_generator(annotation_lines, batch_size, input_shape, anchors, num_class
         for b in range(batch_size):
             if i == 0:
                 np.random.shuffle(annotation_lines)
-            image, box = get_random_data(annotation_lines[i], input_shape, random=True)
+            image, box = get_random_data(annotation_lines[i], input_shape, random=is_random)
             image_data.append(image)
             box_data.append(box)
             i = (i + 1) % n
@@ -170,10 +171,10 @@ def data_generator(annotation_lines, batch_size, input_shape, anchors, num_class
         yield [image_data, *y_true], np.zeros(batch_size)
 
 
-def data_generator_wrapper(annotation_lines, batch_size, input_shape, anchors, num_classes):
+def data_generator_wrapper(annotation_lines, batch_size, input_shape, anchors, num_classes, is_random):
     n = len(annotation_lines)
     if n == 0 or batch_size <= 0: return None
-    return data_generator(annotation_lines, batch_size, input_shape, anchors, num_classes)
+    return data_generator(annotation_lines, batch_size, input_shape, anchors, num_classes, is_random)
 
 
 if __name__ == '__main__':
