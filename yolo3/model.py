@@ -594,11 +594,11 @@ def _yolo_loss(args, anchors, num_classes,  ignore_thresh=.5, print_loss=False, 
     # _get_streaming_metrics(true_class_probs, raw_pred[..., 5:7], num_classes, "classify_branch")
     # _get_streaming_metrics(extend_true_class_probs, raw_pred[..., 7:], num_classes + 1, "metric_branch")
 
-    if print_loss:
-        print_op = tf.print("[xy_loss, wh_loss, confidence_loss, class_loss]",
-                            *[xy_loss, wh_loss, confidence_loss, class_loss],
-                            output_stream=sys.stdout)
-        with tf.control_dependencies([print_op]):
-            loss = loss * 1.0
+    # if print_loss:
+    #     print_op = tf.print("[xy_loss, wh_loss, confidence_loss, class_loss]",
+    #                         *[xy_loss, wh_loss, confidence_loss, class_loss],
+    #                         output_stream=sys.stdout)
+    #     with tf.control_dependencies([print_op]):
+    #         loss = loss * 1.0
 
     return loss

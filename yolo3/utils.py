@@ -6,6 +6,14 @@ from PIL import Image
 import numpy as np
 from matplotlib.colors import rgb_to_hsv, hsv_to_rgb
 
+import imgaug.augmenters as iaa
+from imgaug.augmenters import Sometimes
+import numpy as np
+import imgaug as ia
+import imgaug.augmenters as iaa
+from imgaug.augmentables.bbs import BoundingBox, BoundingBoxesOnImage
+
+
 def get_classes(classes_path):
     '''loads the classes'''
     with open(classes_path) as f:
@@ -139,38 +147,146 @@ def get_random_data(annotation_line, input_shape, random=True, max_boxes=20, jit
         box_data[:len(box)] = box
 
     return image_data, box_data
-#
-#
-# def change_with_Augmementor(image, boxes):
-#     import Augmentor as ag
-#
-#     obs = np.zeros([image.size + [len(boxes)]]) - 1
-#     new_box = []
-#
-#     def shape_transform(img_data):
-#         p = ag.DataPipeline(img_data)
-#         p.rotate(probability=1, max_left_rotation=20, max_right_rotation=20)
-#         p.skew_tilt(probability=1, magnitude=1)
-#         p.skew_corner(probability=1, magnitude=1)
-#         p.random_distortion(probability=1, grid_height=5, grid_width=16, magnitude=8)
-#         p.shear(probability=1, max_shear_left=0, max_shear_right=20)
-#         p.random_distortion(probability=1, grid_width=4, grid_height=4, magnitude=8)
-#         p.rotate(probability=1, max_right_rotation=10, max_left_rotation=10)
-#         return p.sample(1)
-#
-#     shape_transform([image])
-#     for i, box in enumerate(boxes):
-#         ob = obs[i]
-#         left, top, right, bottom, clz_id = box
-#         ob[left:right, top:bottom] = clz_id
-#
-#         ob = shape_transform([ob])
-#         transformed_box = np.stack(
-#             np.where(ob > 0)
-#         )
-#         left, top = transformed_box.min(axis=0)
-#         right, bottom = transformed_box.max(axis=0)
-#         new_box.append(
-#             (left, top, right, bottom, clz_id)
-#         )
 
+
+# Sometimes(0.5, ...) applies the given augmenter in 50% of all cases,
+# e.g. Sometimes(0.5, GaussianBlur(0.3)) would blur roughly every second image.
+sometimes = lambda aug: iaa.Sometimes(0.5, aug)
+
+seq = iaa.Sequential(
+    [
+        # apply the following augmenters to most images
+        iaa.Fliplr(0.5),  # horizontally flip 50% of all images
+        iaa.Flipud(0.2),  # vertically flip 20% of all images
+        # crop images by -5% to 10% of their height/width
+        sometimes(iaa.CropAndPad(
+            percent=(-0.05, 0.1),
+            pad_mode=ia.ALL,
+            pad_cval=(0, 255)
+        )),
+        sometimes(iaa.Affine(
+            scale={"x": (0.8, 1.2), "y": (0.8, 1.2)},  # scale images to 80-120% of their size, individually per axis
+            #             translate_percent={"x": (-0.2, 0.2), "y": (-0.2, 0.2)}, # translate by -20 to +20 percent (per axis)
+            rotate=(-45, 45),  # rotate by -45 to +45 degrees
+            shear=(-16, 16),  # shear by -16 to +16 degrees
+            order=[0, 1],  # use nearest neighbour or bilinear interpolation (fast)
+            cval=(0, 255),  # if mode is constant, use a cval between 0 and 255
+            mode=ia.ALL  # use any of scikit-image's warping modes (see 2nd image from the top for examples)
+        )),
+        # execute 0 to 5 of the following (less important) augmenters per image
+        # don't execute all of them, as that would often be way too strong
+        iaa.SomeOf((0, 5),
+                   [
+                       #                 sometimes(iaa.Superpixels(p_replace=(0, 1.0), n_segments=(20, 200))), # convert images into their superpixel representation
+                       iaa.OneOf([
+                           iaa.GaussianBlur((0, 1.0)),  # blur images with a sigma between 0 and 3.0
+                           #                     iaa.AverageBlur(k=(2, 4)), # blur image using local means with kernel sizes between 2 and 7
+                           #                     iaa.MedianBlur(k=(2, 4)), # blur image using local medians with kernel sizes between 2 and 7
+                       ]),
+                       iaa.Sharpen(alpha=(0, 1.0), lightness=(0.75, 1.5)),  # sharpen images
+                       iaa.Emboss(alpha=(0, 1.0), strength=(0, 2.0)),  # emboss images
+                       #                 # search either for all edges or for directed edges,
+                       #                 # blend the result with the original image using a blobby mask
+                       iaa.SimplexNoiseAlpha(iaa.OneOf([
+                           iaa.EdgeDetect(alpha=(0.5, 1.0)),
+                           iaa.DirectedEdgeDetect(alpha=(0.5, 1.0), direction=(0.0, 1.0)),
+                       ])),
+                       #                 iaa.AdditiveGaussianNoise(loc=0, scale=(0.0, 0.05*255), per_channel=0.5), # add gaussian noise to images
+                       #                 iaa.OneOf([
+                       #                     iaa.Dropout((0.01, 0.1), per_channel=0.5), # randomly remove up to 10% of the pixels
+                       #                     iaa.CoarseDropout((0.03, 0.15), size_percent=(0.02, 0.05), per_channel=0.2),
+                       #                 ]),
+                       #                 iaa.Invert(0.05, per_channel=True), # invert color channels
+                       #                 iaa.Add((-10, 10), per_channel=0.5), # change brightness of images (by -10 to 10 of original value)
+                       #                 iaa.AddToHueAndSaturation((-20, 20)), # change hue and saturation
+                       #                 # either change the brightness of the whole image (sometimes
+                       #                 # per channel) or change the brightness of subareas
+                       iaa.OneOf([
+                           iaa.Multiply((0.5, 1.5), per_channel=0.5),
+                           iaa.FrequencyNoiseAlpha(
+                               exponent=(-4, 0),
+                               first=iaa.Multiply((0.5, 1.5), per_channel=True),
+                               second=iaa.ContrastNormalization((0.5, 2.0))
+                           )
+                       ]),
+                       iaa.ContrastNormalization((0.5, 2.0), per_channel=0.5),  # improve or worsen the contrast
+                       #                 iaa.Grayscale(alpha=(0.0, 1.0)),
+                       #                 sometimes(iaa.ElasticTransformation(alpha=(0.5, 3.5), sigma=0.25)), # move pixels locally around (with random strengths)
+                       #                 sometimes(iaa.PiecewiseAffine(scale=(0.01, 0.05))), # sometimes move parts of the image around
+                       sometimes(iaa.PerspectiveTransform(scale=(0.01, 0.1))),
+                       sometimes(iaa.PiecewiseAffine(scale=(0.01, 0.03), nb_rows=4, nb_cols=4)),
+                       sometimes(iaa.ElasticTransformation(sigma=5.0)),
+
+                   ],
+                   random_order=True
+                   )
+    ],
+    random_order=True
+)
+
+
+def get_data(annotation_line, input_shape, random=True, max_boxes=20, jitter=.3, hue=.1, sat=1.5, val=1.5,
+             proc_img=True):
+    line = annotation_line.split()
+    image = Image.open(line[0])
+    iw, ih = image.size
+    h, w = input_shape
+    box = np.array([np.array(list(map(int, box.split(',')))) for box in line[1:]])
+    return image, box
+
+
+def get_random_data_1(annotation_line, input_shape, random=True, max_boxes=20, jitter=.3, hue=.1, sat=1.5, val=1.5,
+                      proc_img=True):
+    '''random preprocessing for real-time data augmentation'''
+    line = annotation_line.split()
+    image = Image.open(line[0])
+    iw, ih = image.size
+    h, w = input_shape
+    box = np.array([np.array(list(map(int, box.split(',')))) for box in line[1:]])
+
+    if not random:
+        # resize image
+        scale = min(w / iw, h / ih)
+        nw = int(iw * scale)
+        nh = int(ih * scale)
+        dx = (w - nw) // 2
+        dy = (h - nh) // 2
+        image_data = 0
+        if proc_img:
+            image = image.resize((nw, nh), Image.BICUBIC)
+            new_image = Image.new('RGB', (w, h), (128, 128, 128))
+            new_image.paste(image, (dx, dy))
+            image_data = np.array(new_image) / 255.
+
+        # correct boxes
+        box_data = np.zeros((max_boxes, 5))
+        if len(box) > 0:
+            np.random.shuffle(box)
+            if len(box) > max_boxes: box = box[:max_boxes]
+            box[:, [0, 2]] = box[:, [0, 2]] * scale + dx
+            box[:, [1, 3]] = box[:, [1, 3]] * scale + dy
+            box_data[:len(box)] = box
+
+        return image_data, box_data
+
+    img_data = np.array(image)
+    bbs = BoundingBoxesOnImage([
+        BoundingBox(x1, y1, x2, y2, label) for x1, y1, x2, y2, label in box
+    ], shape=img_data.shape
+    )
+    image = np.array(image)
+    image_rescaled = ia.imresize_single_image(image, input_shape)
+    bbs_rescaled = bbs.on(image_rescaled)
+
+    shaped_img, shaped_bbx = seq(image=image_rescaled, bounding_boxes=bbs_rescaled)
+    # boxed = shaped_bbx.draw_on_image(shaped_img)
+    shaped_bbx = [[x.x1, x.y1, x.x2, x.y2, x.label] for x in bbs_rescaled.bounding_boxes]
+    box = np.array(shaped_bbx)
+    box_data = np.zeros((max_boxes, 5))
+    if len(box) > 0:
+        np.random.shuffle(box)
+        if len(box) > max_boxes: box = box[:max_boxes]
+        box[:, [0, 2]] = box[:, [0, 2]]
+        box[:, [1, 3]] = box[:, [1, 3]]
+        box_data[:len(box)] = box
+    return shaped_img, box_data

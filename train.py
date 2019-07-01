@@ -84,7 +84,7 @@ def _main():
     # Unfreeze and continue training, to fine-tune.
     # Train longer if the result is not good.
     if True:
-        model.load_weights(log_dir + 'ep019-loss30.886-val_loss34.066.h5')  # TODO remove
+        # model.load_weights(log_dir + 'ep019-loss30.886-val_loss34.066.h5')  # TODO remove
 
         for i in range(len(model.layers)):
             model.layers[i].trainable = True
@@ -153,8 +153,7 @@ def data_generator(annotation_lines, batch_size, input_shape, anchors, num_class
         for b in range(batch_size):
             if i == 0:
                 np.random.shuffle(annotation_lines)
-            image, box = get_random_data(annotation_lines[i], input_shape, random=is_random)
-            # print(annotation_lines[i].split()[0].split("/")[-1])
+            image, box = get_random_data_1(annotation_lines[i], input_shape, random=is_random)
             image_data.append(image)
             box_data.append(box)
             i = (i + 1) % n
@@ -168,7 +167,6 @@ def data_generator_wrapper(annotation_lines, batch_size, input_shape, anchors, n
     n = len(annotation_lines)
     if n == 0 or batch_size <= 0: return None
     return data_generator(annotation_lines, batch_size, input_shape, anchors, num_classes, is_random)
-
 
 if __name__ == '__main__':
     _main()
