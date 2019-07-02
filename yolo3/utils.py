@@ -151,7 +151,7 @@ def get_random_data(annotation_line, input_shape, random=True, max_boxes=20, jit
 
 # Sometimes(0.5, ...) applies the given augmenter in 50% of all cases,
 # e.g. Sometimes(0.5, GaussianBlur(0.3)) would blur roughly every second image.
-sometimes = lambda aug: iaa.Sometimes(0.5, aug)
+sometimes = lambda aug: iaa.Sometimes(0.8, aug)
 
 seq = iaa.Sequential(
     [
@@ -192,13 +192,13 @@ seq = iaa.Sequential(
                            iaa.DirectedEdgeDetect(alpha=(0.5, 1.0), direction=(0.0, 1.0)),
                        ])),
                        #                 iaa.AdditiveGaussianNoise(loc=0, scale=(0.0, 0.05*255), per_channel=0.5), # add gaussian noise to images
-                       #                 iaa.OneOf([
-                       #                     iaa.Dropout((0.01, 0.1), per_channel=0.5), # randomly remove up to 10% of the pixels
-                       #                     iaa.CoarseDropout((0.03, 0.15), size_percent=(0.02, 0.05), per_channel=0.2),
-                       #                 ]),
-                       #                 iaa.Invert(0.05, per_channel=True), # invert color channels
-                       #                 iaa.Add((-10, 10), per_channel=0.5), # change brightness of images (by -10 to 10 of original value)
-                       #                 iaa.AddToHueAndSaturation((-20, 20)), # change hue and saturation
+                       iaa.OneOf([
+                           iaa.Dropout((0.01, 0.1), per_channel=0.5), # randomly remove up to 10% of the pixels
+                           iaa.CoarseDropout((0.03, 0.15), size_percent=(0.02, 0.05), per_channel=0.2),
+                       ]),
+                       iaa.Invert(0.05, per_channel=True), # invert color channels
+                       iaa.Add((-10, 10), per_channel=0.5), # change brightness of images (by -10 to 10 of original value)
+                       iaa.AddToHueAndSaturation((-20, 20)), # change hue and saturation
                        #                 # either change the brightness of the whole image (sometimes
                        #                 # per channel) or change the brightness of subareas
                        iaa.OneOf([
@@ -210,7 +210,7 @@ seq = iaa.Sequential(
                            )
                        ]),
                        iaa.ContrastNormalization((0.5, 2.0), per_channel=0.5),  # improve or worsen the contrast
-                       #                 iaa.Grayscale(alpha=(0.0, 1.0)),
+                       iaa.Grayscale(alpha=(0.0, 1.0)),
                        #                 sometimes(iaa.ElasticTransformation(alpha=(0.5, 3.5), sigma=0.25)), # move pixels locally around (with random strengths)
                        #                 sometimes(iaa.PiecewiseAffine(scale=(0.01, 0.05))), # sometimes move parts of the image around
                        sometimes(iaa.PerspectiveTransform(scale=(0.01, 0.1))),
