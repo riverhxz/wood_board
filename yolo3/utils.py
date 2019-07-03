@@ -231,7 +231,7 @@ aug_str_crop = iaa.CropAndPad(
     pad_cval=(0, 255)
 )
 
-aug_str_geo = iaa.SomeOf((1, 3), [
+aug_str_geo = iaa.SomeOf((0, 1), [
     iaa.PerspectiveTransform(scale=(0.01, 0.1)),
     iaa.PiecewiseAffine(scale=(0.01, 0.03), nb_rows=4, nb_cols=4),
     iaa.ElasticTransformation(sigma=5.0),
@@ -245,7 +245,7 @@ aug_str_geo = iaa.SomeOf((1, 3), [
     ),
 ])
 
-aug_str_noise = iaa.SomeOf((1, 2), [
+aug_str_noise = iaa.SomeOf((0, 1), [
     iaa.GaussianBlur((0, 1.0)),
     iaa.Sharpen(alpha=(0, 1.0), lightness=(0.75, 1.5)),
     iaa.Emboss(alpha=(0, 1.0), strength=(0, 2.0)),
@@ -255,21 +255,24 @@ aug_str_noise = iaa.SomeOf((1, 2), [
     iaa.CoarseDropout((0.03, 0.15), size_percent=(0.02, 0.05), per_channel=0.2),
 ])
 
-aug_color_channel = iaa.SomeOf((1, 2), [
+aug_color_channel = iaa.SomeOf((0, 1), [
     iaa.Invert(0.05, per_channel=True),  # invert color channels
     iaa.Add((-10, 10), per_channel=0.5),
     iaa.ContrastNormalization((0.5, 2.0), per_channel=0.5),  # improve or worsen the contrast
     iaa.Grayscale(alpha=(0.0, 1.0)),
 ])
 
-seq1 = iaa.OneOf(
-    [
-        aug_str_crop
-        , aug_str_geo
-        , aug_str_noise
-        , aug_color_channel
-    ]
-)
+seq1 = \
+    iaa.Sequential([
+        iaa.Fliplr(0.5),  # horizontally flip 50% of all images
+        iaa.Flipud(0.2),  # vertically flip 20% of all images
+        iaa.OneOf(
+            [aug_str_crop
+                , aug_str_geo
+                , aug_str_noise
+                , aug_color_channel
+             ])
+    ])
 
 
 def get_data(annotation_line, input_shape, random=True, max_boxes=20, jitter=.3, hue=.1, sat=1.5, val=1.5,
