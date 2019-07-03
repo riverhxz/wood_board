@@ -130,10 +130,6 @@ def get_random_data(annotation_line, input_shape, random=True, max_boxes=20, jit
     x[x < 0] = 0
     image_data = hsv_to_rgb(x)  # numpy array, 0 to 1
 
-    #fliped
-    max_boxes = [[x.x1, x.y1, x.x2, x.y2, x.label] for x in max_boxes]
-    for box in max_boxes:
-        image_data = flip_inbox(image_data, [int(x) for x in box], 0.5)
 
     # correct boxes
     box_data = np.zeros((max_boxes, 5))
@@ -150,6 +146,11 @@ def get_random_data(annotation_line, input_shape, random=True, max_boxes=20, jit
         box = box[np.logical_and(box_w > 1, box_h > 1)]  # discard invalid box
         if len(box) > max_boxes: box = box[:max_boxes]
         box_data[:len(box)] = box
+
+    #fliped
+    for bb in box:
+        image_data = flip_inbox(image_data, bb.astype(np.int32), 0.5)
+
 
     return image_data, box_data
 
@@ -289,8 +290,10 @@ def get_data(annotation_line, input_shape, random=True, max_boxes=20, jitter=.3,
     box = np.array([np.array(list(map(int, box.split(',')))) for box in line[1:]])
     return image, box
 
+
 def flip_inbox(img, box, prob):
-    x1,y1, x2,y2 = box[:4]
+    y1,x1, y2,x2 = box[:4]
+    # x1,y1, x2,y2 = box[:4]
     if np.random.random() < prob:
         img[x1:x2,y1:y2,:] = np.flip(img[x1:x2,y1:y2,:], 0)
     if np.random.random() < prob:
