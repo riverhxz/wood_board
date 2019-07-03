@@ -193,12 +193,13 @@ seq = iaa.Sequential(
                        ])),
                        #                 iaa.AdditiveGaussianNoise(loc=0, scale=(0.0, 0.05*255), per_channel=0.5), # add gaussian noise to images
                        iaa.OneOf([
-                           iaa.Dropout((0.01, 0.1), per_channel=0.5), # randomly remove up to 10% of the pixels
+                           iaa.Dropout((0.01, 0.1), per_channel=0.5),  # randomly remove up to 10% of the pixels
                            iaa.CoarseDropout((0.03, 0.15), size_percent=(0.02, 0.05), per_channel=0.2),
                        ]),
-                       iaa.Invert(0.05, per_channel=True), # invert color channels
-                       iaa.Add((-10, 10), per_channel=0.5), # change brightness of images (by -10 to 10 of original value)
-                       iaa.AddToHueAndSaturation((-20, 20)), # change hue and saturation
+                       iaa.Invert(0.05, per_channel=True),  # invert color channels
+                       iaa.Add((-10, 10), per_channel=0.5),
+                       # change brightness of images (by -10 to 10 of original value)
+                       iaa.AddToHueAndSaturation((-20, 20)),  # change hue and saturation
                        #                 # either change the brightness of the whole image (sometimes
                        #                 # per channel) or change the brightness of subareas
                        iaa.OneOf([
@@ -222,6 +223,52 @@ seq = iaa.Sequential(
                    )
     ],
     random_order=True
+)
+
+aug_str_crop = iaa.CropAndPad(
+    percent=(-0.05, 0.1),
+    pad_mode=ia.ALL,
+    pad_cval=(0, 255)
+)
+
+aug_str_geo = iaa.SomeOf((1, 3), [
+    iaa.PerspectiveTransform(scale=(0.01, 0.1)),
+    iaa.PiecewiseAffine(scale=(0.01, 0.03), nb_rows=4, nb_cols=4),
+    iaa.ElasticTransformation(sigma=5.0),
+    iaa.Affine(
+        scale={"x": (0.8, 1.2), "y": (0.8, 1.2)},  # scale images to 80-120% of their size, individually per axis
+        rotate=(-45, 45),  # rotate by -45 to +45 degrees
+        shear=(-16, 16),  # shear by -16 to +16 degrees
+        order=[0, 1],  # use nearest neighbour or bilinear interpolation (fast)
+        cval=(0, 255),  # if mode is constant, use a cval between 0 and 255
+        mode=ia.ALL  # use any of scikit-image's warping modes (see 2nd image from the top for examples)
+    ),
+])
+
+aug_str_noise = iaa.SomeOf((1, 2), [
+    iaa.GaussianBlur((0, 1.0)),
+    iaa.Sharpen(alpha=(0, 1.0), lightness=(0.75, 1.5)),
+    iaa.Emboss(alpha=(0, 1.0), strength=(0, 2.0)),
+    iaa.EdgeDetect(alpha=(0.5, 1.0)),
+    iaa.DirectedEdgeDetect(alpha=(0.5, 1.0), direction=(0.0, 1.0)),
+    iaa.Dropout((0.01, 0.1), per_channel=0.5),  # randomly remove up to 10% of the pixels
+    iaa.CoarseDropout((0.03, 0.15), size_percent=(0.02, 0.05), per_channel=0.2),
+])
+
+aug_color_channel = iaa.SomeOf((1, 2), [
+    iaa.Invert(0.05, per_channel=True),  # invert color channels
+    iaa.Add((-10, 10), per_channel=0.5),
+    iaa.ContrastNormalization((0.5, 2.0), per_channel=0.5),  # improve or worsen the contrast
+    iaa.Grayscale(alpha=(0.0, 1.0)),
+])
+
+seq1 = iaa.OneOf(
+    [
+        aug_str_crop
+        , aug_str_geo
+        , aug_str_noise
+        , aug_color_channel
+    ]
 )
 
 
@@ -278,7 +325,7 @@ def get_random_data_1(annotation_line, input_shape, random=True, max_boxes=20, j
     image_rescaled = ia.imresize_single_image(image, input_shape)
     bbs_rescaled = bbs.on(image_rescaled)
 
-    shaped_img, shaped_bbx = seq(image=image_rescaled, bounding_boxes=bbs_rescaled)
+    shaped_img, shaped_bbx = seq1(image=image_rescaled, bounding_boxes=bbs_rescaled)
     # boxed = shaped_bbx.draw_on_image(shaped_img)
     shaped_bbx = [[x.x1, x.y1, x.x2, x.y2, x.label] for x in bbs_rescaled.bounding_boxes]
     box = np.array(shaped_bbx)
