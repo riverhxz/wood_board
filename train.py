@@ -168,7 +168,6 @@ def data_generator(annotation_lines, batch_size, input_shape, anchors, num_class
             yield [image_data, *y_true], np.zeros(batch_size)
 
 
-
 def data_generator_wrapper(annotation_lines, batch_size, input_shape, anchors, num_classes, is_random):
     n = len(annotation_lines)
     if n == 0 or batch_size <= 0: return None
