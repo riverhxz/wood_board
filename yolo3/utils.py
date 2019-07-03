@@ -131,9 +131,10 @@ def get_random_data(annotation_line, input_shape, random=True, max_boxes=20, jit
     image_data = hsv_to_rgb(x)  # numpy array, 0 to 1
 
     #fliped
-    image_data = [[x.x1, x.y1, x.x2, x.y2, x.label] for x in max_boxes]
-    for box in shaped_bbx:
-        image_data = flip_inbox(image_data, box)
+    max_boxes = [[x.x1, x.y1, x.x2, x.y2, x.label] for x in max_boxes]
+    for box in max_boxes:
+        image_data = flip_inbox(image_data, [int(x) for x in box], 0.5)
+
     # correct boxes
     box_data = np.zeros((max_boxes, 5))
     if len(box) > 0:
@@ -344,7 +345,7 @@ def get_random_data_1(annotation_line, input_shape, random=True, max_boxes=20, j
     # boxed = shaped_bbx.draw_on_image(shaped_img)
     shaped_bbx = [[x.x1, x.y1, x.x2, x.y2, x.label] for x in bbs_rescaled.bounding_boxes]
     for box in shaped_bbx:
-        shaped_img = flip_inbox(shaped_img, box)
+        shaped_img = flip_inbox(shaped_img, [int(x) for x in box], 0.5)
     box = np.array(shaped_bbx)
     box_data = np.zeros((max_boxes, 5))
     if len(box) > 0:
