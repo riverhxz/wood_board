@@ -130,6 +130,10 @@ def get_random_data(annotation_line, input_shape, random=True, max_boxes=20, jit
     x[x < 0] = 0
     image_data = hsv_to_rgb(x)  # numpy array, 0 to 1
 
+    #fliped
+    image_data = [[x.x1, x.y1, x.x2, x.y2, x.label] for x in max_boxes]
+    for box in shaped_bbx:
+        image_data = flip_inbox(image_data, box)
     # correct boxes
     box_data = np.zeros((max_boxes, 5))
     if len(box) > 0:
@@ -284,6 +288,13 @@ def get_data(annotation_line, input_shape, random=True, max_boxes=20, jitter=.3,
     box = np.array([np.array(list(map(int, box.split(',')))) for box in line[1:]])
     return image, box
 
+def flip_inbox(img, box, prob):
+    x1,y1, x2,y2 = box[:4]
+    if np.random.random() < prob:
+        img[x1:x2,y1:y2,:] = np.flip(img[x1:x2,y1:y2,:], 0)
+    if np.random.random() < prob:
+        img[x1:x2, y1:y2, :] = np.flip(img[x1:x2, y1:y2, :], 1)
+    return  img
 
 def get_random_data_1(annotation_line, input_shape, random=True, max_boxes=20, jitter=.3, hue=.1, sat=1.5, val=1.5,
                       proc_img=True):
@@ -329,8 +340,11 @@ def get_random_data_1(annotation_line, input_shape, random=True, max_boxes=20, j
     bbs_rescaled = bbs.on(image_rescaled)
 
     shaped_img, shaped_bbx = seq1(image=image_rescaled, bounding_boxes=bbs_rescaled)
+
     # boxed = shaped_bbx.draw_on_image(shaped_img)
     shaped_bbx = [[x.x1, x.y1, x.x2, x.y2, x.label] for x in bbs_rescaled.bounding_boxes]
+    for box in shaped_bbx:
+        shaped_img = flip_inbox(shaped_img, box)
     box = np.array(shaped_bbx)
     box_data = np.zeros((max_boxes, 5))
     if len(box) > 0:
