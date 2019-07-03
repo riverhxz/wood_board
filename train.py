@@ -147,20 +147,25 @@ def data_generator(annotation_lines, batch_size, input_shape, anchors, num_class
     '''data generator for fit_generator'''
     n = len(annotation_lines)
     i = 0
+    assert batch_size > 1
     while True:
         image_data = []
         box_data = []
-        for b in range(batch_size):
-            if i == 0:
-                np.random.shuffle(annotation_lines)
-            image, box = get_random_data_1(annotation_lines[i], input_shape, random=is_random)
+        np.random.shuffle(annotation_lines)
+        for i in range(n):
+            image, box = get_random_data_1(annotation_lines[i], input_shape, random=False)
             image_data.append(image)
             box_data.append(box)
-            i = (i + 1) % n
-        image_data = np.array(image_data)
-        box_data = np.array(box_data)
-        y_true = preprocess_true_boxes(box_data, input_shape, anchors, num_classes)
-        yield [image_data, *y_true], np.zeros(batch_size)
+            if is_random:
+                for i2 in range(batch_size - 1):
+                    image, box = get_random_data_1(annotation_lines[i], input_shape, random=True)
+                    image_data.append(image)
+                    box_data.append(box)
+
+            image_data = np.array(image_data)
+            box_data = np.array(box_data)
+            y_true = preprocess_true_boxes(box_data, input_shape, anchors, num_classes)
+            yield [image_data, *y_true], np.zeros(batch_size)
 
 
 
