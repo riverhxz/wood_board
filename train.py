@@ -84,7 +84,7 @@ def _main():
     # Unfreeze and continue training, to fine-tune.
     # Train longer if the result is not good.
     if True:
-        # model.load_weights(log_dir + 'ep019-loss30.886-val_loss34.066.h5')  # TODO remove
+        model.load_weights('data' , 'darknet53.weights.h5')  # TODO remove
 
         for i in range(len(model.layers)):
             model.layers[i].trainable = True

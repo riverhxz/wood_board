@@ -267,7 +267,7 @@ aug_color_channel = iaa.SomeOf((0, 1), [
     iaa.ContrastNormalization((0.5, 2.0), per_channel=0.5),  # improve or worsen the contrast
     iaa.Grayscale(alpha=(0.0, 1.0)),
 ])
-
+seq0 = iaa.Sequential([])
 seq1 = \
     iaa.Sequential([
         iaa.Fliplr(0.5),  # horizontally flip 50% of all images
@@ -277,6 +277,16 @@ seq1 = \
                 , aug_str_geo
                 , aug_str_noise
                 , aug_color_channel
+             ])
+    ])
+
+seq2 = \
+    iaa.Sequential([
+#         iaa.Fliplr(0.5),  # horizontally flip 50% of all images
+#         iaa.Flipud(0.2),  # vertically flip 20% of all images
+        iaa.OneOf(
+            [
+                iaa.PiecewiseAffine(scale=(0.01, 0.1), nb_rows=4, nb_cols=4),
              ])
     ])
 
@@ -339,16 +349,19 @@ def get_random_data_1(annotation_line, input_shape, random=True, max_boxes=20, j
         BoundingBox(x1, y1, x2, y2, label) for x1, y1, x2, y2, label in box
     ], shape=img_data.shape
     )
-    image = np.array(image)
-    image_rescaled = ia.imresize_single_image(image, input_shape)
-    bbs_rescaled = bbs.on(image_rescaled)
 
-    shaped_img, shaped_bbx = seq1(image=image_rescaled, bounding_boxes=bbs_rescaled)
+    image = np.array(image)
+    image, bbs = seq0(image=image, bounding_boxes=bbs)
 
     # boxed = shaped_bbx.draw_on_image(shaped_img)
-    shaped_bbx = [[x.x1, x.y1, x.x2, x.y2, x.label] for x in bbs_rescaled.bounding_boxes]
+    shaped_bbx = [[x.x1, x.y1, x.x2, x.y2, x.label] for x in bbs.bounding_boxes]
     for box in shaped_bbx:
-        shaped_img = flip_inbox(shaped_img, [int(x) for x in box], 0.5)
+        image = warp(image, [int(x) for x in box[:4]])
+
+    image = ia.imresize_single_image(image, input_shape)
+    bbs = bbs.on(image)
+    shaped_bbx = [[x.x1, x.y1, x.x2, x.y2, x.label] for x in bbs.bounding_boxes]
+
     box = np.array(shaped_bbx)
     box_data = np.zeros((max_boxes, 5))
     if len(box) > 0:
@@ -357,4 +370,9 @@ def get_random_data_1(annotation_line, input_shape, random=True, max_boxes=20, j
         box[:, [0, 2]] = box[:, [0, 2]]
         box[:, [1, 3]] = box[:, [1, 3]]
         box_data[:len(box)] = box
-    return shaped_img, box_data
+    return image, box_data
+
+def warp(img, box):
+    x1, y1, x2, y2 = box[:4]
+    img[y1:y2, x1:x2, :] = seq2(image=img[y1:y2, x1:x2, :])
+    return img
